@@ -119,6 +119,14 @@ celerybeat.pid
 
 # Environments
 .env
+.env.dev
+.env.prod
+.env.prod.db
+.env.staging
+.env.staging.db
+.env.prod.proxy-companion
+.env.staging.proxy-companion
+
 .venv
 env/
 venv/
@@ -150,6 +158,7 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+**/.vscode/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
