@@ -16,30 +16,42 @@ def user_list(request):
     
 @api_view(['GET'])
 def user_create(request):
-    if request.method == 'GET':
-        params = User._meta.fields
-        for param in params:
-            param = param.get_attname()
-            if param == 'line_user_id':
-                request.data[param] = request.query_params.get('customer_id', None)
-            elif param == 'gender':
-                gender = request.query_params.get('gender', 'U')
-                if gender == 'ชาย':
-                    gender = 'M'
-                elif gender == 'หญิง':
-                    gender = 'F'
-                else:
-                    gender = 'U'
-                request.data[param] = gender
+    params = User._meta.fields
+    for param in params:
+        param = param.get_attname()
+        if param == 'line_user_id':
+            line_user_id = request.query_params.get('customer_id', None)
+            request.data[param] = line_user_id
+        elif param == 'gender':
+            gender = request.query_params.get('gender', 'U')
+            if gender == 'ชาย':
+                gender = 'M'
+            elif gender == 'หญิง':
+                gender = 'F'
             else:
-                request.data[param] = request.query_params.get(param, None)
-            
-        serializer = UserSerializer(data=request.data)
+                gender = 'U'
+            request.data[param] = gender
+        else:
+            request.data[param] = request.query_params.get(param, None)
+    
+    # Activated User
+    request.data['status'] = 1
+    
+    try:
+        user = User.objects.get(line_user_id=line_user_id)
+        serializer = UserSerializer(user, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        print(serializer.errors)
+            return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except User.DoesNotExist:
+        if request.method == 'GET':
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            print(serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['GET', 'PUT', 'DELETE'])
 def user_detail(request, line_user_id):
@@ -68,6 +80,7 @@ def user_detail(request, line_user_id):
 
 @api_view(['GET'])
 def check(request):
+    
     line_user_id = request.query_params.get('customer_id', None)
     
     response = {
@@ -76,19 +89,28 @@ def check(request):
     }
     
     try:
-        user = User.objects.get(line_user_id=line_user_id)
+        user = User.objects.get(line_user_id=line_user_id, status=1)
     except User.DoesNotExist:
-        response['message'] = 'User Does not exist.'
-        return Response(response,status=status.HTTP_404_NOT_FOUND)
+        response = {
+            'message': 'User Does not exist.',
+            'intent': "intent_createuser_inform"
+        }
+        headers = {
+            'Response-Type': 'intent'
+        }
+        return Response(response, headers=headers)
 
     if request.method == 'GET':
+        
         serializer = UserSerializer(user)
         
         response = {
-            'status_code': status.HTTP_200_OK,
             'message': 'User exist.',
-            'data': serializer.data,
-            'intent': f"{{{{intent_googleplace}}}}"
+            'intent': "intent_ask_travel_type"
         }
         
-        return Response(response)
+        headers = {
+            'Response-Type': 'intent'
+        }
+        
+        return Response(response, headers=headers)

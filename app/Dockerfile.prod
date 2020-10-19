@@ -4,7 +4,7 @@
 ###########
 
 # pull official base image
-FROM python:3.8.3-alpine as builder
+FROM python:3.8.3-slim-buster as builder
 
 # set work directory
 WORKDIR /usr/src/app
@@ -13,17 +13,20 @@ WORKDIR /usr/src/app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# install psycopg2 dependencies
-RUN apk update \
-    && apk add postgresql-dev gcc python3-dev musl-dev
+RUN apt-get update \
+    && apt-get -y upgrade \
+    && apt-get install -y --no-install-recommends netcat gcc python3-dev libspatialindex-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # lint
-RUN pip install --upgrade pip
-RUN pip install flake8
-COPY . .
-RUN flake8 --ignore=E501,F401 .
+# RUN pip install --upgrade pip
+# RUN pip install flake8
+# COPY . .
+# RUN flake8 --ignore=E501,F401 .
 
 # install dependencies
+RUN pip install --upgrade pip
 COPY ./requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
@@ -33,7 +36,7 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requir
 #########
 
 # pull official base image
-FROM python:3.8.3-alpine
+FROM python:3.8.3-slim-buster
 
 # create directory for the app user
 RUN mkdir -p /home/app

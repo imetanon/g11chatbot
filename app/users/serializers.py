@@ -8,5 +8,6 @@ class UserSerializer(serializers.ModelSerializer):
             'line_user_id',
             'gender',
             'birth_year',
+            'status'
         )
         model = User

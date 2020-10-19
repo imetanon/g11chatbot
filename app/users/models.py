@@ -16,11 +16,18 @@ class User(TimestampedModel):
         ('F', 'Female'),
         ('U', 'Undefined'),
     )
+    
+    STATUS_CHOICES = (
+        (0, 'inactive'),
+        (1, 'active'),
+    )
 
     line_user_id = models.CharField(unique=True, max_length=33, blank=False, null=False)
     gender = models.CharField(
         max_length=1, choices=GENDER_CHOICES, default='U')
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     birth_year = models.IntegerField(validators=[MinValueValidator(1984), max_value_current_year])
+   
 
     def __str__(self):
         return self.line_user_id

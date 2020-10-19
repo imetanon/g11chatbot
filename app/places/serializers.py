@@ -19,6 +19,7 @@ class BusinessHourSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class PlaceSerializer(serializers.ModelSerializer):
+    # category = serializers.PrimaryKeyRelatedField(many=True, read_only=False, queryset=Category.objects.all())
     category = CategorySerializer(many=True, read_only=True)
     sub_category = SubCategorySerializer(many=True, read_only=True)
     business_hours = BusinessHourSerializer(many=True, read_only=True)
