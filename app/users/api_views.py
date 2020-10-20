@@ -38,20 +38,35 @@ def user_create(request):
     request.data['status'] = 1
     
     try:
+        #Update
         user = User.objects.get(line_user_id=line_user_id)
         serializer = UserSerializer(user, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except User.DoesNotExist:
+        #Create
         if request.method == 'GET':
             serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            print(serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                # return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print(serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    response = {
+        'message': 'User successfully created',
+        'intent': "intent_ask_travel_type"
+    }
+    
+    headers = {
+        'Response-Type': 'intent'
+    }
+    
+    return Response(response, headers=headers)
     
 @api_view(['GET', 'PUT', 'DELETE'])
 def user_detail(request, line_user_id):

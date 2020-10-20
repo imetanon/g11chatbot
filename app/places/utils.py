@@ -493,9 +493,9 @@ def sub_category_flex(request, sub_categories, line_user_id):
             "contents": [
                 {
                     "type": "text",
-                    "text": "Sub-Category",
+                    "text": "โปรดเลือกประเภทสถานที่",
                     "weight": "bold",
-                    "size": "xl",
+                    "size": "md",
                     "color": "#FFFFFFFF",
                     "align": "center",
                     "contents": []

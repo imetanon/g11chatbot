@@ -157,13 +157,15 @@ def one_hot_encoder(dataframe):
 def show_category(request):
 
     if request.method == 'GET':
+        
+        line_user_id = request.query_params.get('customer_id', None)
 
         categories = Category.objects.all()
 
         bubble_carousel = []
 
         for category in categories:
-            bubble_carousel.append(category_flex(request, category.id, "test"))
+            bubble_carousel.append(category_flex(request, category.id, line_user_id))
 
         headers = {
             'Response-Type': 'object'
@@ -192,7 +194,10 @@ def show_category(request):
 def show_sub_category(request):
 
     if request.method == 'GET':
+        
         category = request.query_params.get('category', None)
+        line_user_id = request.query_params.get('customer_id', None)
+        
         sub_categories = Place.objects.filter(
             category__name=category, sub_category__sub_category_type=0).values_list('sub_category__name', flat=True)
 
@@ -210,7 +215,7 @@ def show_sub_category(request):
 
             for sub_categories in sub_categories_list:
                 bubble_carousel.append(sub_category_flex(
-                    request, sub_categories, "test"))
+                    request, sub_categories, line_user_id))
 
             headers = {
                 'Response-Type': 'object'
