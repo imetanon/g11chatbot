@@ -14,6 +14,7 @@ import numpy as np
 # import sefr_cut
 import pythainlp
 from pythainlp import sent_tokenize, word_tokenize
+from pythainlp.corpus import thai_stopwords
 
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.preprocessing import MinMaxScaler
@@ -29,12 +30,23 @@ def get_subcategory_from_sentence(sentence):
 
     word_split = word_tokenize(sentence, engine='newmm', keep_whitespace=False)
     word_split_lower = [word.lower() for word in word_split]
+    word_split_list = pd.Series(word_split_lower).unique().tolist()
+    word_split_clean = []
+    
+    for word in word_split_list:
+        if word not in thai_stopwords():
+            if word not in [' ','/','\'','-','.','108','11','7','','ๆ','ฯ']:
+                word_split_clean.append(word)
+    
+    
     sub_category_keyword_list = SubCategoryKeyword.objects.filter(reduce(lambda x, y: x | y, [Q(
-        keyword__contains=word) for word in word_split_lower])).values_list('sub_category__id', flat=True)
-
-    print(word_split_lower)
+        keyword__contains=word) for word in word_split_clean])).order_by().values_list('sub_category__id', flat=True).distinct()
+    
+ 
+    print(word_split_clean)
     # print(sub_category_keyword_list)
     if sub_category_keyword_list.count() > 0:
+        print(sub_category_keyword_list)
         return list(sub_category_keyword_list)
 
     return False
@@ -236,17 +248,25 @@ def show_sub_category(request):
             }
 
             return Response(payload, headers=headers, status=status.HTTP_200_OK)
+        else:
+            headers = {
+                'Response-Type': 'intent'
+            }
+            return Response({'intent':'intent_inputerror'}, headers=headers, status=status.HTTP_200_OK)
 
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-def get_recommend_place_by_location(line_user_id, sub_category_list, latitude, longitude):
+def get_recommend_place_by_location(line_user_id, sub_category_list, latitude, longitude, radius = 5):
 
-    place_df = pd.DataFrame.from_records(
-        Place.objects.filter(sub_category__in=sub_category_list).values('id', 'display_name', 'category__name', 'review_count', 'latitude', 'longitude')
-    )
+    if len(sub_category_list) > 0 and sub_category_list != None:
+        place_list = Place.objects.filter(sub_category__in=sub_category_list).values('id', 'display_name', 'category__name', 'review_count', 'latitude', 'longitude')
+    else:
+        place_list = Place.objects.all().values('id', 'display_name', 'category__name', 'review_count', 'latitude', 'longitude')
+        
+    place_df = pd.DataFrame.from_records(place_list)
     
-    # print(place_df)
+    # Transform Dataframe to GeoDataframe
 
     place_df['geometry'] = place_df.apply(lambda x: Point(
         (float(x.longitude), float(x.latitude))), axis=1)
@@ -266,19 +286,26 @@ def get_recommend_place_by_location(line_user_id, sub_category_list, latitude, l
     user_location_geo_df.set_crs(epsg=4326, inplace=True)
 
     user_location_geo_df['geometry'] = user_location_geo_df.geometry.buffer(
-        0.05)
+        radius/100)
     user_location_geo_df = user_location_geo_df.to_crs(epsg=4326)
+    
+    # Used Spartial Join to match Point to Polygon
 
     intersect_place_df = gpd.sjoin(
         user_location_geo_df, place_geo_df, how="left", op="contains")
 
     intersect_place_df["rank"] = intersect_place_df.groupby(
         ['category__name'])["review_count"].rank("dense", ascending=False)
-
+    
     # intersect_place_list = intersect_place_df[intersect_place_df['rank']==1]['display_name'].tolist()
     # print(intersect_place_list)
     
-    intersect_place_df = intersect_place_df[intersect_place_df['rank'] == 1][['display_name', 'latitude_right', 'longitude_right']].rename(
+    if len(sub_category_list) <= 2 and len(sub_category_list) > 0 and len(sub_category_list) is not None:
+        intersect_place_df = intersect_place_df[(intersect_place_df['rank'] == 1) | (intersect_place_df['rank'] == 2) | (intersect_place_df['rank'] == 3)]
+    else:
+        intersect_place_df = intersect_place_df[(intersect_place_df['rank'] == 1)]
+    
+    intersect_place_df = intersect_place_df[['display_name', 'latitude_right', 'longitude_right']].rename(
         columns={'latitude_right': 'latitude', 'longitude_right': 'longitude'})
     user_location_df = user_location_df[['user', 'longitude', 'latitude']].rename(
         columns={'user': 'display_name'})
@@ -289,8 +316,13 @@ def get_recommend_place_by_location(line_user_id, sub_category_list, latitude, l
         lambda x: float(x))
     intersect_place_df['latitude'] = intersect_place_df['latitude'].apply(
         lambda x: float(x))
-    # print(create_distance_matrix_df(intersect_place_df))
+    
+    intersect_place_df = intersect_place_df.drop_duplicates(subset=['display_name'])
 
+    return intersect_place_df, user_location_df
+    
+def get_trip_plan(intersect_place_df):
+    
     distance_matrix_df = create_distance_matrix_df(intersect_place_df)
 
     data_model = {
@@ -358,7 +390,6 @@ def create_distance_matrix_df(place_df):
 
     dictOfWords = { i : place_list[i] for i in range(0, len(place_list) ) }
     matrix_distance_df.rename(columns=dictOfWords,index=dictOfWords,inplace=True)
-    # print(matrix_distance_df)
 
     return matrix_distance_df
 
@@ -422,12 +453,12 @@ def vehicle_route(data):
             plan_output.append(manager.IndexToNode(index))
             
             plan_text += ' {}\n'.format(manager.IndexToNode(index))
-            plan_text += 'Distance of the route: {}m\n'.format(route_distance)
+            plan_text += 'Distance of the route: {}km\n'.format(route_distance)
             print(plan_text)
 
             total_distance += route_distance
         
         print(distance_list)
-        print('Total Distance of all routes: {}m'.format(total_distance))
+        print('Total Distance of all routes: {}km'.format(total_distance))
 
         return plan_output, distance_list, total_distance

@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from .serializers import LogSerializer
 from .models import Log
 from places.models import Place, Category, SubCategory, BusinessHour, PlaceAction, User
-from mls.api_views import get_recommend_nearest_place, get_recommend_place_by_location, get_subcategory_from_sentence
+from mls.api_views import get_recommend_nearest_place, get_recommend_place_by_location, get_trip_plan, create_distance_matrix_df, get_subcategory_from_sentence
 from places.utils import place_flex, trip_flex
 from .utils import create_log
 
@@ -129,42 +129,85 @@ def check_location(request):
 
         print(location_state, sentence)
 
-        if location_state == 'DL_askplan' or location_state == '{{intent_select_travel_category}}':
-            create_log(request, line_user_id, f'#DL_askplan#{sentence}')
-            sub_category_list = get_subcategory_from_sentence(sentence)
-            if sub_category_list != False:
-                recommend_place_route, distance_list, total_distance = get_recommend_place_by_location(
-                    line_user_id, sub_category_list, p_latitude, p_longitude)
-                
-                if recommend_place_route != False:
+        if location_state == 'DL_askplan':
+            if sentence[0] != '#':
+                create_log(request, line_user_id, f'#DL_askplan#{sentence}')
+                sub_category_list = get_subcategory_from_sentence(sentence)
+                if sub_category_list != False:
+                    intersect_place_df, user_location_df = get_recommend_place_by_location(line_user_id, sub_category_list, p_latitude, p_longitude, 15)
                     
-                    bubble_carousel = []
-                    bubble_carousel.append(trip_flex(request, line_user_id, recommend_place_route, distance_list, total_distance, p_address))
+                    recommend_place_route, distance_list, total_distance = get_trip_plan(intersect_place_df)
+                    
+                    if recommend_place_route != False:
+                        
+                        bubble_carousel = []
+                        bubble_carousel.append(trip_flex(request, line_user_id, recommend_place_route, distance_list, total_distance, p_address))
 
-                    headers = {
-                        'Response-Type': 'object'
-                    }
+                        headers = {
+                            'Response-Type': 'object'
+                        }
 
-                    message = {
-                        "type": "flex",
-                        "altText": f"ข้อมูลสถานที่",
-                        "contents":
-                            {
-                                "type": "carousel",
-                                "contents": bubble_carousel
-                            }
-                    }
+                        message = {
+                            "type": "flex",
+                            "altText": f"ข้อมูลสถานที่",
+                            "contents":
+                                {
+                                    "type": "carousel",
+                                    "contents": bubble_carousel
+                                }
+                        }
 
-                    payload = {
-                        "line_payload": [message],
-                    }
+                        payload = {
+                            "line_payload": [message],
+                        }
 
-                    return Response(payload, headers=headers, status=status.HTTP_200_OK)
-               
-            #No match sub-cat or no in area 
-            headers = {
-                'Response-Type': 'intent'
-            }
-            return Response({'intent':'intent_error_trip'}, headers=headers, status=status.HTTP_200_OK)
+                        return Response(payload, headers=headers, status=status.HTTP_200_OK)
+                
+                #No match sub-cat or no in area 
+                headers = {
+                    'Response-Type': 'intent'
+                }
+                return Response({'intent':'intent_error_trip'}, headers=headers, status=status.HTTP_200_OK)
+        elif location_state == '{{intent_askcurrentlocation}}':
+
+            intersect_place_df, user_location_df = get_recommend_place_by_location(line_user_id, [], p_latitude, p_longitude)
+            distance_matrix_df = create_distance_matrix_df(intersect_place_df)
+            
+            nearest_place_dict = distance_matrix_df['user'].to_dict()
+            
+            if len(nearest_place_dict) > 1:
+                nearest_place_tuple_sorted = sorted(nearest_place_dict.items(), key=lambda x: x[1])
+                
+                bubble_carousel = []
+                for nearest_place in nearest_place_tuple_sorted:
+                    if nearest_place[0] != 'user' :
+                        place = Place.objects.filter(display_name=nearest_place[0])
+                        bubble_carousel.append(place_flex(request, place[0].id, line_user_id, distance=nearest_place[1]))
+
+                headers = {
+                    'Response-Type': 'object'
+                }
+
+                message = {
+                    "type": "flex",
+                    "altText": f"ข้อมูลสถานที่",
+                    "contents":
+                        {
+                            "type": "carousel",
+                            "contents": bubble_carousel
+                        }
+                }
+
+                payload = {
+                    "line_payload": [message],
+                }
+
+                return Response(payload, headers=headers, status=status.HTTP_200_OK)
+            else:
+                headers = {
+                    'Response-Type': 'intent'
+                }
+                return Response({'intent':'intent_error_trip'}, headers=headers, status=status.HTTP_200_OK)
+                
 
     return Response(status=status.HTTP_400_BAD_REQUEST)

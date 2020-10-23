@@ -5,6 +5,7 @@ from .models import Place, BusinessHour, Category, SubCategory, PlaceAction, Sub
 class PlaceAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
     list_display = ('name', 'location', 'created_at', 'updated_at')
+    search_fields = ['name']
     # fields = ('name', 'location', 'created_at', 'updated_at')
 
     # fieldsets = [

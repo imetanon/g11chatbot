@@ -3,7 +3,7 @@ import datetime
 import math
 
 
-def place_flex(request, id, line_user_id):
+def place_flex(request, id, line_user_id, distance = None):
     try:
         now = datetime.datetime.now()
         place = Place.objects.get(pk=id)
@@ -171,6 +171,30 @@ def place_flex(request, id, line_user_id):
         "offsetEnd": "0px",
         "paddingAll": "20px"
     }
+    
+    body_header_distance = None
+    
+    if distance is not None:
+        body_header_distance = {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": f"ระยะทาง {format(distance,'.1f')} km",
+                    "color": "#ffffff",
+                    "size": "xs"
+                }
+            ],
+            "position": "absolute",
+            "height": "25px",
+            "backgroundColor": "#ff334b",
+            "offsetTop": "15px",
+            "offsetEnd": "0px",
+            "justifyContent": "center",
+            "width": "120px",
+            "alignItems": "center"
+        }
 
     body_location_detail = {
         "type": "box",
@@ -203,10 +227,11 @@ def place_flex(request, id, line_user_id):
     }
 
     if place.map_link is not None and str(place.map_link) != 'nan':
+
         body_location_detail['action'] = {
             "type": "uri",
             "label": "action",
-            "uri": place.map_link
+            "uri": get_action_uri(request, line_user_id, place.id, 'map_link', None)
         }
         map_icon = {
             "type": "icon",
@@ -215,7 +240,7 @@ def place_flex(request, id, line_user_id):
         }
 
         body_location_detail['contents'][0]['contents'].append(map_icon)
-
+        
     bubble = {
         "type": "bubble",
         "body": {
@@ -225,7 +250,7 @@ def place_flex(request, id, line_user_id):
                 {
                     "type": "box",
                     "layout": "vertical",
-                    "contents": [body_header_cover, body_header_gradient, body_header_detail]
+                    "contents": [body_header_cover, body_header_gradient, body_header_detail, body_header_distance]
                 },
                 body_location_detail,
                 {

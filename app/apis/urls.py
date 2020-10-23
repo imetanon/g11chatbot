@@ -28,7 +28,6 @@ urlpatterns = [
     
     path('mls/place/recommend/', ml_views.recommend_place),
     path('mls/place/category/', ml_views.show_category),
-    path('mls/place/subcategory/', ml_views.show_sub_category),
-    path('mls/place/recommend/trip/', ml_views.get_recommend_place_by_location),
+    path('mls/place/subcategory/', ml_views.show_sub_category)
     
 ]

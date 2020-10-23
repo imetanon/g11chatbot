@@ -65,5 +65,9 @@ def place_action(request):
             place_act = PlaceAction.objects.create(
                 user=user, place=place, action="phone_number")
             return Response(headers={'Cache-Control': 'no-cache', 'location': f'tel:{target}'}, status=status.HTTP_301_MOVED_PERMANENTLY)
+        elif action == 'map_link':
+            place_act = PlaceAction.objects.create(
+                user=user, place=place, action="maps_link")
+            return redirect(place.map_link)
 
     return Response(status=status.HTTP_404_NOT_FOUND)
