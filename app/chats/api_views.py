@@ -49,7 +49,7 @@ def check_intent(request):
         
         keyword = request.query_params.get('keyword', None)
         line_user_id = request.query_params.get('customer_id', None)
-        create_log(line_user_id, keyword)
+        # create_log(line_user_id, keyword)
         if keyword is not None and keyword[0] == '#':
             intent, target = keyword[1:].split('#')
             print(f'Intent: {intent}, Target: {target}')
