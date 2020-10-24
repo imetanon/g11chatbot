@@ -166,7 +166,8 @@ def check_location(request):
     chat_state = ChatState.objects.get(user=user)
     print(chat_state.intent, sentence)
     if chat_state.intent == 'DL_askplan':
-        create_log(request, line_user_id=line_user_id, keyword='#DL_askplan#{sentence}')
+        log_keyword = f'#DL_askplan#{sentence}'
+        create_log(request, line_user_id=line_user_id, keyword=log_keyword)
         sub_category_list = get_subcategory_from_sentence(sentence)
         if sub_category_list != False:
             
