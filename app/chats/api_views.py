@@ -49,7 +49,7 @@ def check_intent(request):
         
         keyword = request.query_params.get('keyword', None)
         line_user_id = request.query_params.get('customer_id', None)
-        # create_log(line_user_id, keyword)
+        create_log(request, line_user_id=line_user_id, keyword=keyword)
         if keyword is not None and keyword[0] == '#':
             intent, target = keyword[1:].split('#')
             print(f'Intent: {intent}, Target: {target}')
@@ -166,6 +166,7 @@ def check_location(request):
     chat_state = ChatState.objects.get(user=user)
     print(chat_state.intent, sentence)
     if chat_state.intent == 'DL_askplan':
+        create_log(request, line_user_id=line_user_id, keyword='#DL_askplan#{sentence}')
         sub_category_list = get_subcategory_from_sentence(sentence)
         if sub_category_list != False:
             
