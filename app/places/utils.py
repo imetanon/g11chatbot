@@ -3,7 +3,7 @@ import datetime
 import math
 
 
-def place_flex(request, id, line_user_id, distance = None):
+def place_flex(request, id, line_user_id, distance=None):
     try:
         now = datetime.datetime.now()
         place = Place.objects.get(pk=id)
@@ -171,30 +171,6 @@ def place_flex(request, id, line_user_id, distance = None):
         "offsetEnd": "0px",
         "paddingAll": "20px"
     }
-    
-    body_header_distance = None
-    
-    if distance is not None:
-        body_header_distance = {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": f"ระยะทาง {format(distance,'.1f')} km",
-                    "color": "#ffffff",
-                    "size": "xs"
-                }
-            ],
-            "position": "absolute",
-            "height": "25px",
-            "backgroundColor": "#ff334b",
-            "offsetTop": "15px",
-            "offsetEnd": "0px",
-            "justifyContent": "center",
-            "width": "120px",
-            "alignItems": "center"
-        }
 
     body_location_detail = {
         "type": "box",
@@ -240,7 +216,7 @@ def place_flex(request, id, line_user_id, distance = None):
         }
 
         body_location_detail['contents'][0]['contents'].append(map_icon)
-        
+
     bubble = {
         "type": "bubble",
         "body": {
@@ -250,7 +226,7 @@ def place_flex(request, id, line_user_id, distance = None):
                 {
                     "type": "box",
                     "layout": "vertical",
-                    "contents": [body_header_cover, body_header_gradient, body_header_detail, body_header_distance]
+                    "contents": [body_header_cover, body_header_gradient, body_header_detail]
                 },
                 body_location_detail,
                 {
@@ -312,6 +288,30 @@ def place_flex(request, id, line_user_id, distance = None):
             "spacing": "md"
         }
     }
+    
+    if distance is not None:
+        body_header_distance = {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": f"ระยะทาง {format(distance,'.1f')} km",
+                    "color": "#ffffff",
+                    "size": "xs"
+                }
+            ],
+            "position": "absolute",
+            "height": "25px",
+            "backgroundColor": "#ff334b",
+            "offsetTop": "15px",
+            "offsetEnd": "0px",
+            "justifyContent": "center",
+            "width": "120px",
+            "alignItems": "center"
+        }
+        bubble['body']['contents'][0]['contents'].append(body_header_distance)
+    
 
     if place.online_link is not None and str(place.online_link) != 'nan':
         website_button = {
@@ -444,7 +444,7 @@ def category_flex(request, id, line_user_id):
                             "height": "40px",
                             "action": {
                                 "type": "message",
-                                "text": category.name,
+                                "text": f"#activity#{category.name}",
                                 "label": "เลือก"
                             }
                         }
@@ -496,7 +496,7 @@ def sub_category_flex(request, sub_categories, line_user_id):
                     "action": {
                         "type": "message",
                         "label": "เลือก",
-                        "text": sub_category
+                        "text": f"#place#{sub_category}"
                     },
                     "style": "primary",
                     "flex": 0,
@@ -543,7 +543,7 @@ def sub_category_flex(request, sub_categories, line_user_id):
     return bubble
 
 
-def trip_flex(request, line_user_id, place_route_list, distance_list, total_distance, start_address):
+def trip_flex(request, line_user_id, place_route_list, distance_list, total_distance, start_address, share=False, share_plan_id = 1):
 
     bubble = {
         "type": "bubble",
@@ -580,9 +580,9 @@ def trip_flex(request, line_user_id, place_route_list, distance_list, total_dist
                         {
                             "type": "button",
                             "action": {
-                                "type": "postback",
+                                "type": "uri",
                                 "label": "แชร์",
-                                "data": "hello"
+                                "uri": f"line://app/1655135300-EKqpM6kr?planId={share_plan_id}"
                             },
                             "style": "secondary",
                             "height": "sm"
@@ -649,7 +649,7 @@ def trip_flex(request, line_user_id, place_route_list, distance_list, total_dist
                             "gravity": "center",
                             "flex": 4,
                             "size": "sm"
-                            }
+                    }
                 ],
                 "spacing": "lg",
                 "cornerRadius": "30px",
@@ -675,7 +675,7 @@ def trip_flex(request, line_user_id, place_route_list, distance_list, total_dist
                                             "layout": "vertical",
                                             "contents": [],
                                             "width": "2px",
-                                            "backgroundColor": "#B7B7B7"
+                                            "backgroundColor": "#6486E3"
                                         },
                                         {
                                             "type": "filler"
@@ -693,7 +693,7 @@ def trip_flex(request, line_user_id, place_route_list, distance_list, total_dist
                             "flex": 4,
                             "size": "xs",
                             "color": "#8c8c8c"
-                            }
+                    }
                 ],
                 "spacing": "lg",
                 "height": "30px"
@@ -734,7 +734,7 @@ def trip_flex(request, line_user_id, place_route_list, distance_list, total_dist
                             "gravity": "center",
                             "flex": 4,
                             "size": "sm"
-                            }
+                    }
                 ],
                 "spacing": "lg",
                 "cornerRadius": "30px"
@@ -778,11 +778,51 @@ def trip_flex(request, line_user_id, place_route_list, distance_list, total_dist
                                 "type": "message",
                                 "text": f"#command-ข้อมูลสถานที่#{place}"
                             }
-                            }
+                    }
                 ],
                 "spacing": "lg",
                 "cornerRadius": "30px"
             }
+            if share == True:
+                place_node = {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "filler"
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "contents": [],
+                                    "cornerRadius": "30px",
+                                    "width": "12px",
+                                    "height": "12px",
+                                    "borderColor": "#6486E3",
+                                    "borderWidth": "2px"
+                                },
+                                {
+                                    "type": "filler"
+                                }
+                            ],
+                            "flex": 0
+                        },
+                        {
+                            "type": "text",
+                            "text": place,
+                            "gravity": "center",
+                            "flex": 4,
+                            "size": "sm",
+                        }
+                    ],
+                    "spacing": "lg",
+                    "cornerRadius": "30px"
+                }
+
             route_line = {
                 "type": "box",
                 "layout": "horizontal",
@@ -821,7 +861,7 @@ def trip_flex(request, line_user_id, place_route_list, distance_list, total_dist
                             "flex": 4,
                             "size": "xs",
                             "color": "#8c8c8c"
-                            }
+                    }
                 ],
                 "spacing": "lg",
                 "height": "30px"

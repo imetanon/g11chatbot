@@ -56,14 +56,19 @@ def get_subcategory_from_sentence(sentence):
 def recommend_place(request):
     if request.method == 'GET':
         line_user_id = request.query_params.get('customer_id', None)
-        category = str(request.query_params.get('category', None)).strip()
-        sub_category = str(request.query_params.get(
-            'sub_category', None)).strip()
-        place_list = Place.objects.filter(
-            category__name=category, sub_category__name=sub_category).order_by('-review_count')[:5]
+        keyword = request.query_params.get('keyword', None)
+        sub_category = str(request.query_params.get('sub_category', None)).strip()
+        
+        if sub_category[0] == '#':
+            sub_category = sub_category[1:].split('#')[1]
+            
+        if keyword[0] == '#':
+            sub_category = keyword[1:].split('#')[1]
+        
+        place_list = Place.objects.filter(sub_category__sub_category_type=0,sub_category__name=sub_category).order_by('-review_count')[:5]
 
         print(len(place_list))
-        # serializer = PlaceSerializer(place_list, many=True)
+
         bubble_carousel = []
         for place in place_list:
             bubble_carousel.append(place_flex(request, place.id, line_user_id))
@@ -89,43 +94,6 @@ def recommend_place(request):
         return Response(payload, headers=headers, status=status.HTTP_200_OK)
 
     return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    if request.method == 'GET':
-        line_user_id = request.query_params.get('customer_id', None)
-        category = str(request.query_params.get('category', None)).strip()
-        sub_category = str(request.query_params.get(
-            'sub_category', None)).strip()
-        place_list = Place.objects.filter(
-            category__name=category, sub_category__name=sub_category).order_by('-review_count')[:5]
-
-        print(len(place_list))
-        # serializer = PlaceSerializer(place_list, many=True)
-        bubble_carousel = []
-        for place in place_list:
-            bubble_carousel.append(place_flex(request, place.id, line_user_id))
-
-        headers = {
-            'Response-Type': 'object'
-        }
-
-        message = {
-            "type": "flex",
-            "altText": f"ข้อมูลสถานที่",
-            "contents":
-                {
-                    "type": "carousel",
-                    "contents": bubble_carousel
-                }
-        }
-
-        payload = {
-            "line_payload": [message]
-        }
-
-        return Response(payload, headers=headers, status=status.HTTP_200_OK)
-
-    return Response(status=status.HTTP_400_BAD_REQUEST)
-
 
 def get_recommend_nearest_place(place_name):
     df_prep = pd.DataFrame.from_records(
@@ -209,7 +177,14 @@ def show_sub_category(request):
         
         category = request.query_params.get('category', None)
         line_user_id = request.query_params.get('customer_id', None)
+        keyword = request.query_params.get('keyword', None)
         
+        if category[0] == '#':
+            category = category[1:].split('#')[1]
+            
+        if keyword[0] == '#':
+            category = keyword[1:].split('#')[1]
+            
         sub_categories = Place.objects.filter(
             category__name=category, sub_category__sub_category_type=0).values_list('sub_category__name', flat=True)
 
@@ -235,7 +210,7 @@ def show_sub_category(request):
 
             message = {
                 "type": "flex",
-                "altText": f"ข้อมูลสถานที่",
+                "altText": f"โปรดเลือกประเภทสถานที่",
                 "contents":
                     {
                         "type": "carousel",
@@ -299,6 +274,8 @@ def get_recommend_place_by_location(line_user_id, sub_category_list, latitude, l
     
     # intersect_place_list = intersect_place_df[intersect_place_df['rank']==1]['display_name'].tolist()
     # print(intersect_place_list)
+    
+    print(len(sub_category_list))
     
     if len(sub_category_list) <= 2 and len(sub_category_list) > 0 and len(sub_category_list) is not None:
         intersect_place_df = intersect_place_df[(intersect_place_df['rank'] == 1) | (intersect_place_df['rank'] == 2) | (intersect_place_df['rank'] == 3)]

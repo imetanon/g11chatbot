@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from users.models import User
+from chats.models import ChatState
 from users.serializers import UserSerializer
 
 @api_view(['GET'])
@@ -57,9 +58,12 @@ def user_create(request):
                 print(serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    user = User.objects.get(line_user_id=line_user_id)
+    chate_state = ChatState.objects.get(user=user)
+    
     response = {
         'message': 'User successfully created',
-        'intent': "intent_ask_travel_type"
+        'intent': chate_state.intent
     }
     
     headers = {
