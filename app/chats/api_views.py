@@ -153,7 +153,7 @@ def handle_intent_chat_state(line_user_id, intent, keyword):
         return Response(response, headers=headers, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
-def check_location(request):
+def check_nearest_place(request):
     location_state = request.query_params.get('location_state', None)
     sentence = request.query_params.get('sentence', None)
     line_user_id = request.query_params.get('customer_id', None)
@@ -163,71 +163,81 @@ def check_location(request):
     keyword = request.query_params.get('keyword', None)
     
     user = User.objects.get(line_user_id=line_user_id)
-    chat_state = ChatState.objects.get(user=user)
-    print(chat_state.intent, sentence)
-    if chat_state.intent == 'DL_askplan':
-        log_keyword = f'#DL_askplan#{sentence}'
-        create_log(request, line_user_id=line_user_id, keyword=log_keyword)
-        sub_category_list = get_subcategory_from_sentence(sentence)
-        if sub_category_list != False:
-            
-            intersect_place_df, user_location_df = get_recommend_place_by_location(line_user_id, sub_category_list, p_latitude, p_longitude, 15)
-            recommend_place_route, distance_list, total_distance = get_trip_plan(intersect_place_df)
-            
-            if recommend_place_route != False:
-                share_plan = {
-                    "type": "flex",
-                    "altText": "แผนการท่องเที่ยว",
-                    "contents": trip_flex(request, line_user_id, recommend_place_route, distance_list, total_distance, p_address, share=True)
-                }
 
-                del share_plan['contents']['header']['contents'][-1]
+    intersect_place_df, user_location_df = get_recommend_place_by_location(line_user_id, [], p_latitude, p_longitude)
+    distance_matrix_df = create_distance_matrix_df(intersect_place_df)
 
-                user = User.objects.get(line_user_id=line_user_id)
-                trip_plan = TripPlan.objects.create(user=user, data=share_plan)
+    nearest_place_dict = distance_matrix_df['user'].to_dict()
 
-                bubble = trip_flex(request, line_user_id, recommend_place_route,
-                                    distance_list, total_distance, p_address, share_plan_id=trip_plan.id)
+    if len(nearest_place_dict) > 1:
+        nearest_place_tuple_sorted = sorted(
+            nearest_place_dict.items(), key=lambda x: x[1])
 
-                headers = {
-                    'Response-Type': 'object'
-                }
+        bubble_carousel = []
+        for nearest_place in nearest_place_tuple_sorted:
+            if nearest_place[0] != 'user':
+                place = Place.objects.filter(
+                    display_name=nearest_place[0])
+                bubble_carousel.append(place_flex(
+                    request, place[0].id, line_user_id, distance=nearest_place[1]))
 
-                message = {
-                    "type": "flex",
-                    "altText": "แผนการท่องเที่ยว",
-                    "contents": bubble
-
-                }
-
-                payload = {
-                    "line_payload": [message],
-                }
-
-                return Response(payload, headers=headers, status=status.HTTP_200_OK)
-
-        # No match sub-cat or no in area
         headers = {
-            'Response-Type': 'intent'
+            'Response-Type': 'object'
         }
-        return Response({'intent': 'intent_error_trip'}, headers=headers, status=status.HTTP_200_OK)
-    elif chat_state.intent == 'intent_searchbylocation':
-        intersect_place_df, user_location_df = get_recommend_place_by_location(line_user_id, [], p_latitude, p_longitude)
-        distance_matrix_df = create_distance_matrix_df(intersect_place_df)
 
-        nearest_place_dict = distance_matrix_df['user'].to_dict()
+        message = {
+            "type": "flex",
+            "altText": f"ข้อมูลสถานที่",
+            "contents":
+                {
+                    "type": "carousel",
+                    "contents": bubble_carousel
+                }
+        }
 
-        if len(nearest_place_dict) > 1:
-            nearest_place_tuple_sorted = sorted(
-                nearest_place_dict.items(), key=lambda x: x[1])
+        payload = {
+            "line_payload": [message],
+        }
 
-            bubble_carousel = []
-            for nearest_place in nearest_place_tuple_sorted:
-                if nearest_place[0] != 'user':
-                    place = Place.objects.filter(
-                        display_name=nearest_place[0])
-                    bubble_carousel.append(place_flex(
-                        request, place[0].id, line_user_id, distance=nearest_place[1]))
+        return Response(payload, headers=headers, status=status.HTTP_200_OK)
+    else:
+        headers = {
+                'Response-Type': 'intent'
+        }
+        return Response({'intent': 'intent_nearest_notfound'}, headers=headers, status=status.HTTP_200_OK)
+    
+
+@api_view(['GET'])
+def create_trip(request):
+    sentence = request.query_params.get('sentence', None)
+    line_user_id = request.query_params.get('customer_id', None)
+    p_latitude = request.query_params.get('p_latitude', None)
+    p_longitude = request.query_params.get('p_longitude', None)
+    p_address = request.query_params.get('p_address', None)
+    keyword = request.query_params.get('keyword', None)
+
+    log_keyword = f'#DL_askplan#{sentence}'
+    create_log(request, line_user_id=line_user_id, keyword=log_keyword)
+    sub_category_list = get_subcategory_from_sentence(sentence)
+    if sub_category_list != False:
+
+        intersect_place_df, user_location_df = get_recommend_place_by_location(line_user_id, sub_category_list, p_latitude, p_longitude, 15)
+        recommend_place_route, distance_list, total_distance = get_trip_plan(intersect_place_df)
+            
+        if recommend_place_route != False:
+            share_plan = {
+                "type": "flex",
+                "altText": "แผนการท่องเที่ยว",
+                "contents": trip_flex(request, line_user_id, recommend_place_route, distance_list, total_distance, p_address, share=True)
+            }
+
+            del share_plan['contents']['header']['contents'][-1]
+
+            user = User.objects.get(line_user_id=line_user_id)
+            trip_plan = TripPlan.objects.create(user=user, data=share_plan)
+
+            bubble = trip_flex(request, line_user_id, recommend_place_route,
+                                distance_list, total_distance, p_address, share_plan_id=trip_plan.id)
 
             headers = {
                 'Response-Type': 'object'
@@ -235,12 +245,9 @@ def check_location(request):
 
             message = {
                 "type": "flex",
-                "altText": f"ข้อมูลสถานที่",
-                "contents":
-                    {
-                        "type": "carousel",
-                        "contents": bubble_carousel
-                    }
+                "altText": "แผนการท่องเที่ยว",
+                "contents": bubble
+
             }
 
             payload = {
@@ -248,9 +255,9 @@ def check_location(request):
             }
 
             return Response(payload, headers=headers, status=status.HTTP_200_OK)
-        else:
-            headers = {
-                    'Response-Type': 'intent'
-            }
-            return Response({'intent': 'intent_nearest_notfound'}, headers=headers, status=status.HTTP_200_OK)
-    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    # No match sub-cat or no in area
+    headers = {
+        'Response-Type': 'intent'
+    }
+    return Response({'intent': 'intent_error_trip'}, headers=headers, status=status.HTTP_200_OK)

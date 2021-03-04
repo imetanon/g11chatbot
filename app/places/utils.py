@@ -442,10 +442,15 @@ def category_flex(request, id, line_user_id):
                             "borderColor": "#ffffff",
                             "margin": "xxl",
                             "height": "40px",
+                            # "action": {
+                            #     "type": "message",
+                            #     "text": f"#activity#{category.name}",
+                            #     "label": "เลือก"
+                            # },
                             "action": {
-                                "type": "message",
-                                "text": f"#activity#{category.name}",
-                                "label": "เลือก"
+                                "type": "postback",
+                                "label": "เลือก",
+                                "data": f"#activity#{category.name}"
                             }
                         }
                     ],
@@ -493,10 +498,16 @@ def sub_category_flex(request, sub_categories, line_user_id):
                 },
                 {
                     "type": "button",
+                    # "action": {
+                    #     "type": "message",
+                    #     "label": "เลือก",
+                    #     "text": f"#place#{sub_category}"
+                    # },
                     "action": {
-                        "type": "message",
+                        "type": "postback",
                         "label": "เลือก",
-                        "text": f"#place#{sub_category}"
+                        "data": f"#place#{sub_category}",
+                        # "displayText": f"{sub_category}"
                     },
                     "style": "primary",
                     "flex": 0,

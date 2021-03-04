@@ -24,7 +24,8 @@ urlpatterns = [
     # re_path(r'^chats/logs/create/(?P<line_user_id>U[0-9a-f]{32})', chat_views.log_create),
     path('chats/logs/create/', chat_views.log_create),
     path('chats/intent/check/', chat_views.check_intent),
-    path('chats/location/check/', chat_views.check_location),
+    path('chats/nearest/check/', chat_views.check_nearest_place),
+    path('chats/trip/create/', chat_views.create_trip),
     
     path('mls/place/recommend/', ml_views.recommend_place),
     path('mls/place/category/', ml_views.show_category),
